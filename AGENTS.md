@@ -4,56 +4,72 @@
 
 ## 📋 Overview
 
-Shipping management microservice for the monitoring platform.
+Shipping microservice. Manages shipment tracking, cost estimation, and delivery.
 
 ## 🏗️ Architecture
 
 ```
 shipping-service/
-├── cmd/
-│   └── main.go              # Entry point, graceful shutdown
-├── config/
-│   └── config.go            # Environment-based configuration
-├── db/migrations/
-│   └── sql/                  # Flyway SQL migrations
+├── cmd/main.go
+├── config/config.go
+├── db/migrations/sql/
 ├── internal/
 │   ├── core/
-│   │   ├── database.go      # PostgreSQL connection pool (pgx)
-│   │   └── domain/          # Domain models
-│   ├── logic/v1/
-│   │   ├── service.go       # Business logic layer
-│   │   └── errors.go        # Domain errors
-│   └── web/v1/
-│       └── handler.go       # HTTP handlers (Gin)
+│   │   ├── database.go
+│   │   └── domain/
+│   ├── logic/v1/service.go
+│   └── web/v1/handler.go
 ├── middleware/
-│   ├── logging.go           # Request logging
-│   ├── prometheus.go        # Metrics
-│   └── tracing.go           # OpenTelemetry
 └── Dockerfile
 ```
 
 ## 🔌 API Endpoints
 
-POST /api/v1/shipping/calculate, GET /api/v1/shipping/:id
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/shipping/track` | Track shipment (query: `tracking_number`) |
+| `GET` | `/api/v1/shipping/estimate` | Estimate shipping cost |
+| `GET` | `/api/v1/shipping/orders/:orderId` | Get shipment by order ID |
+
+## 📐 3-Layer Architecture
+
+| Layer | Location | Responsibility |
+|-------|----------|----------------|
+| **Web** | `internal/web/v1/handler.go` | HTTP, validation |
+| **Logic** | `internal/logic/v1/service.go` | Business rules (❌ NO SQL) |
+| **Core** | `internal/core/` | Domain models, repositories |
+
+## 🗄️ Database
+
+| Component | Value |
+|-----------|-------|
+| **Cluster** | supporting-db (shared with user, notification) |
+| **PostgreSQL** | 16 |
+| **HA** | Single instance |
+| **Pooler** | PgBouncer Sidecar |
+| **Endpoint** | `supporting-db-pooler.user.svc.cluster.local:5432` |
+| **Pool Mode** | Transaction |
+| **Cross-namespace** | Yes (cluster in `user` namespace) |
+
+**Note:** Database cluster is in `user` namespace. Zalando Operator syncs credentials via cross-namespace secret.
+
+## 🚀 Graceful Shutdown
+
+**VictoriaMetrics Pattern:**
+1. `/ready` → 503 when shutting down
+2. Drain delay (5s)
+3. Sequential: HTTP → Database → Tracer
 
 ## 🔧 Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| **Framework** | Gin v1.11 |
-| **Database** | PostgreSQL via pgx/v5 |
-| **Logging** | Zerolog (from `github.com/duynhne/pkg`) |
-| **Tracing** | OpenTelemetry with OTLP exporter |
-| **Metrics** | Prometheus client |
+| **Framework** | Gin |
+| **Database** | PostgreSQL 16 via pgx/v5 |
+| **Tracing** | OpenTelemetry |
 
 ## 🛠️ Development
 
 ```bash
-go mod download
-go test -v ./...
-go build -o shipping-service ./cmd/main.go
+go mod download && go test ./... && go build ./cmd/main.go
 ```
-
-## 🚀 CI/CD
-
-Uses reusable GitHub Actions from [shared-workflows](https://github.com/duyhenryer/shared-workflows)
