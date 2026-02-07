@@ -29,10 +29,10 @@ func (s *ShippingService) TrackShipment(ctx context.Context, trackingNumber stri
 	defer span.End()
 
 	// Get database connection pool (pgx)
-	db := database.GetDB()
+	db := database.GetPool()
 	if db == nil {
-		span.RecordError(fmt.Errorf("database connection not available"))
-		return nil, fmt.Errorf("database connection not available")
+		span.RecordError(errors.New("database connection not available"))
+		return nil, errors.New("database connection not available")
 	}
 
 	// Query shipments table by tracking_number
@@ -92,7 +92,7 @@ func (s *ShippingService) TrackShipment(ctx context.Context, trackingNumber stri
 
 // EstimateShipping calculates estimated shipping cost and delivery time
 func (s *ShippingService) EstimateShipping(ctx context.Context, origin, destination string, weight float64) (*domain.EstimateResponse, error) {
-	ctx, span := middleware.StartSpan(ctx, "shipping.estimate", trace.WithAttributes(
+	_, span := middleware.StartSpan(ctx, "shipping.estimate", trace.WithAttributes(
 		attribute.String("layer", "logic"),
 		attribute.String("api.version", "v1"),
 		attribute.String("origin", origin),
@@ -148,10 +148,10 @@ func (s *ShippingService) GetShipmentByOrderID(ctx context.Context, orderID stri
 	))
 	defer span.End()
 
-	db := database.GetDB()
+	db := database.GetPool()
 	if db == nil {
-		span.RecordError(fmt.Errorf("database connection not available"))
-		return nil, fmt.Errorf("database connection not available")
+		span.RecordError(errors.New("database connection not available"))
+		return nil, errors.New("database connection not available")
 	}
 
 	query := `
