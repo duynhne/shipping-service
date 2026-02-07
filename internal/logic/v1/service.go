@@ -3,21 +3,21 @@ package v1
 import (
 	"context"
 	"errors"
-	"fmt"
-	"time"
 
-	"github.com/jackc/pgx/v5"
-	database "github.com/duynhne/shipping-service/internal/core"
 	"github.com/duynhne/shipping-service/internal/core/domain"
 	"github.com/duynhne/shipping-service/middleware"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
-type ShippingService struct{}
+type ShippingService struct {
+	repo domain.ShipmentRepository
+}
 
-func NewShippingService() *ShippingService {
-	return &ShippingService{}
+func NewShippingService(repo domain.ShipmentRepository) *ShippingService {
+	return &ShippingService{
+		repo: repo,
+	}
 }
 
 func (s *ShippingService) TrackShipment(ctx context.Context, trackingNumber string) (*domain.Shipment, error) {
@@ -28,63 +28,21 @@ func (s *ShippingService) TrackShipment(ctx context.Context, trackingNumber stri
 	))
 	defer span.End()
 
-	// Get database connection pool (pgx)
-	db := database.GetPool()
-	if db == nil {
-		span.RecordError(errors.New("database connection not available"))
-		return nil, errors.New("database connection not available")
-	}
-
-	// Query shipments table by tracking_number
-	query := `
-		SELECT id, order_id, tracking_number, carrier, status, estimated_delivery, created_at, updated_at
-		FROM shipments
-		WHERE tracking_number = $1
-		LIMIT 1
-	`
-
-	var id, orderID int
-	var trackingNum, carrier, status string
-	var estimatedDelivery *time.Time // Use pointer for nullable column
-	var createdAt, updatedAt time.Time
-
-	err := db.QueryRow(ctx, query, trackingNumber).Scan(
-		&id, &orderID, &trackingNum, &carrier, &status, &estimatedDelivery, &createdAt, &updatedAt,
-	)
+	shipment, err := s.repo.GetByTrackingNumber(ctx, trackingNumber)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, ErrShipmentNotFound) {
 			span.SetAttributes(attribute.Bool("shipment.found", false))
-			return nil, fmt.Errorf("track shipment with number %q: %w", trackingNumber, ErrShipmentNotFound)
+			return nil, err
 		}
 		span.RecordError(err)
-		return nil, fmt.Errorf("query shipment: %w", err)
-	}
-
-	// Map database fields to domain model
-	shipment := &domain.Shipment{
-		ID:             id,
-		OrderID:        orderID,
-		TrackingNumber: trackingNum,
-		Status:         status,
-		CreatedAt:      createdAt.Format(time.RFC3339),
-		UpdatedAt:      updatedAt.Format(time.RFC3339),
-	}
-
-	if carrier != "" {
-		shipment.Carrier = carrier
-	}
-
-	if estimatedDelivery != nil {
-		deliveryStr := estimatedDelivery.Format(time.RFC3339)
-		shipment.EstimatedDelivery = &deliveryStr
-		span.SetAttributes(attribute.String("shipment.estimated_delivery", deliveryStr))
+		return nil, err
 	}
 
 	span.SetAttributes(
 		attribute.Bool("shipment.found", true),
-		attribute.Int("shipment.id", id),
-		attribute.String("shipment.status", status),
-		attribute.String("shipment.carrier", carrier),
+		attribute.Int("shipment.id", shipment.ID),
+		attribute.String("shipment.status", shipment.Status),
+		attribute.String("shipment.carrier", shipment.Carrier),
 	)
 
 	return shipment, nil
@@ -148,58 +106,20 @@ func (s *ShippingService) GetShipmentByOrderID(ctx context.Context, orderID stri
 	))
 	defer span.End()
 
-	db := database.GetPool()
-	if db == nil {
-		span.RecordError(errors.New("database connection not available"))
-		return nil, errors.New("database connection not available")
-	}
-
-	query := `
-		SELECT id, order_id, tracking_number, carrier, status, estimated_delivery, created_at, updated_at
-		FROM shipments
-		WHERE order_id = $1
-		LIMIT 1
-	`
-
-	var id, dbOrderID int
-	var trackingNum, carrier, status string
-	var estimatedDelivery *time.Time
-	var createdAt, updatedAt time.Time
-
-	err := db.QueryRow(ctx, query, orderID).Scan(
-		&id, &dbOrderID, &trackingNum, &carrier, &status, &estimatedDelivery, &createdAt, &updatedAt,
-	)
+	shipment, err := s.repo.GetByOrderID(ctx, orderID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, ErrShipmentNotFound) {
 			span.SetAttributes(attribute.Bool("shipment.found", false))
-			return nil, fmt.Errorf("get shipment for order %q: %w", orderID, ErrShipmentNotFound)
+			return nil, err
 		}
 		span.RecordError(err)
-		return nil, fmt.Errorf("query shipment: %w", err)
-	}
-
-	shipment := &domain.Shipment{
-		ID:             id,
-		OrderID:        dbOrderID,
-		TrackingNumber: trackingNum,
-		Status:         status,
-		CreatedAt:      createdAt.Format(time.RFC3339),
-		UpdatedAt:      updatedAt.Format(time.RFC3339),
-	}
-
-	if carrier != "" {
-		shipment.Carrier = carrier
-	}
-
-	if estimatedDelivery != nil {
-		deliveryStr := estimatedDelivery.Format(time.RFC3339)
-		shipment.EstimatedDelivery = &deliveryStr
+		return nil, err
 	}
 
 	span.SetAttributes(
 		attribute.Bool("shipment.found", true),
-		attribute.Int("shipment.id", id),
-		attribute.String("shipment.status", status),
+		attribute.Int("shipment.id", shipment.ID),
+		attribute.String("shipment.status", shipment.Status),
 	)
 
 	return shipment, nil
