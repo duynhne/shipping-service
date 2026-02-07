@@ -30,9 +30,9 @@ func (s *ShippingService) TrackShipment(ctx context.Context, trackingNumber stri
 
 	shipment, err := s.repo.GetByTrackingNumber(ctx, trackingNumber)
 	if err != nil {
-		if errors.Is(err, ErrShipmentNotFound) {
+		if errors.Is(err, domain.ErrShipmentNotFound) {
 			span.SetAttributes(attribute.Bool("shipment.found", false))
-			return nil, err
+			return nil, ErrShipmentNotFound
 		}
 		span.RecordError(err)
 		return nil, err
@@ -108,9 +108,9 @@ func (s *ShippingService) GetShipmentByOrderID(ctx context.Context, orderID stri
 
 	shipment, err := s.repo.GetByOrderID(ctx, orderID)
 	if err != nil {
-		if errors.Is(err, ErrShipmentNotFound) {
+		if errors.Is(err, domain.ErrShipmentNotFound) {
 			span.SetAttributes(attribute.Bool("shipment.found", false))
-			return nil, err
+			return nil, ErrShipmentNotFound
 		}
 		span.RecordError(err)
 		return nil, err

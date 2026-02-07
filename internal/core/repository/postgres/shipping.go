@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/duynhne/shipping-service/internal/core/domain"
-	logicv1 "github.com/duynhne/shipping-service/internal/logic/v1"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -32,7 +31,7 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 	shipment, err := r.scanShipment(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("track shipment with number %q: %w", trackingNumber, logicv1.ErrShipmentNotFound)
+			return nil, fmt.Errorf("track shipment with number %q: %w", trackingNumber, domain.ErrShipmentNotFound)
 		}
 		return nil, fmt.Errorf("query shipment: %w", err)
 	}
@@ -52,7 +51,7 @@ func (r *ShipmentRepository) GetByOrderID(ctx context.Context, orderID string) (
 	shipment, err := r.scanShipment(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("get shipment for order %q: %w", orderID, logicv1.ErrShipmentNotFound)
+			return nil, fmt.Errorf("get shipment for order %q: %w", orderID, domain.ErrShipmentNotFound)
 		}
 		return nil, fmt.Errorf("query shipment: %w", err)
 	}
