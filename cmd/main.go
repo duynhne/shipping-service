@@ -15,7 +15,9 @@ import (
 
 	"github.com/duynhne/shipping-service/config"
 	database "github.com/duynhne/shipping-service/internal/core"
-	v1 "github.com/duynhne/shipping-service/internal/web/v1"
+	"github.com/duynhne/shipping-service/internal/core/repository/postgres"
+	logicv1 "github.com/duynhne/shipping-service/internal/logic/v1"
+	webv1 "github.com/duynhne/shipping-service/internal/web/v1"
 	"github.com/duynhne/shipping-service/middleware"
 )
 
@@ -50,8 +52,13 @@ func main() {
 
 	initProfiling(cfg, logger)
 
+	// Initialize dependencies
+	shippingRepo := postgres.NewShipmentRepository(pool)
+	shippingService := logicv1.NewShippingService(shippingRepo)
+	shippingHandler := webv1.NewHandler(shippingService)
+
 	var isShuttingDown atomic.Bool
-	srv := setupServer(cfg, logger, &isShuttingDown)
+	srv := setupServer(cfg, logger, &isShuttingDown, shippingHandler)
 	runGracefulShutdown(cfg, srv, tp, pool, logger, &isShuttingDown)
 }
 
@@ -84,7 +91,7 @@ func initProfiling(cfg *config.Config, logger *zap.Logger) {
 	logger.Info("Profiling initialized", zap.String("endpoint", cfg.Profiling.Endpoint))
 }
 
-func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.Bool) *http.Server {
+func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.Bool, handler *webv1.Handler) *http.Server {
 	r := gin.Default()
 
 	r.Use(middleware.TracingMiddleware())
@@ -105,9 +112,9 @@ func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.
 
 	apiV1 := r.Group("/api/v1")
 	{
-		apiV1.GET("/shipping/track", v1.TrackShipment)
-		apiV1.GET("/shipping/estimate", v1.EstimateShipping)
-		apiV1.GET("/shipping/orders/:orderId", v1.GetShipmentByOrder)
+		apiV1.GET("/shipping/track", handler.TrackShipment)
+		apiV1.GET("/shipping/estimate", handler.EstimateShipping)
+		apiV1.GET("/shipping/orders/:orderId", handler.GetShipmentByOrder)
 	}
 
 	return &http.Server{

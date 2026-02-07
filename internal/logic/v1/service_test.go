@@ -6,7 +6,7 @@ import (
 )
 
 func TestEstimateShipping(t *testing.T) {
-	service := NewShippingService()
+	service := NewShippingService(nil)
 	ctx := context.Background()
 
 	tests := []struct {

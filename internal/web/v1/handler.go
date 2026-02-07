@@ -13,9 +13,17 @@ import (
 	"go.uber.org/zap"
 )
 
-var shippingService = logicv1.NewShippingService()
+type Handler struct {
+	service *logicv1.ShippingService
+}
 
-func TrackShipment(c *gin.Context) {
+func NewHandler(service *logicv1.ShippingService) *Handler {
+	return &Handler{
+		service: service,
+	}
+}
+
+func (h *Handler) TrackShipment(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
 		attribute.String("layer", "web"),
 		attribute.String("method", c.Request.Method),
@@ -32,7 +40,7 @@ func TrackShipment(c *gin.Context) {
 	}
 	span.SetAttributes(attribute.String("tracking.id", trackingID))
 
-	shipment, err := shippingService.TrackShipment(ctx, trackingID)
+	shipment, err := h.service.TrackShipment(ctx, trackingID)
 	if err != nil {
 		span.RecordError(err)
 		zapLogger.Error("Failed to track shipment", zap.Error(err))
@@ -54,7 +62,7 @@ func TrackShipment(c *gin.Context) {
 
 // EstimateShipping handles GET /api/v1/shipping/estimate
 // Query params: origin, destination, weight
-func EstimateShipping(c *gin.Context) {
+func (h *Handler) EstimateShipping(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
 		attribute.String("layer", "web"),
 		attribute.String("method", c.Request.Method),
@@ -89,7 +97,7 @@ func EstimateShipping(c *gin.Context) {
 		attribute.Float64("estimate.weight", weight),
 	)
 
-	estimate, err := shippingService.EstimateShipping(ctx, origin, destination, weight)
+	estimate, err := h.service.EstimateShipping(ctx, origin, destination, weight)
 	if err != nil {
 		span.RecordError(err)
 		zapLogger.Error("Failed to estimate shipping", zap.Error(err))
@@ -108,7 +116,7 @@ func EstimateShipping(c *gin.Context) {
 
 // GetShipmentByOrder handles GET /api/v1/shipping/orders/:orderId
 // Returns shipment info for a given order ID
-func GetShipmentByOrder(c *gin.Context) {
+func (h *Handler) GetShipmentByOrder(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
 		attribute.String("layer", "web"),
 		attribute.String("method", c.Request.Method),
@@ -121,7 +129,7 @@ func GetShipmentByOrder(c *gin.Context) {
 	orderID := c.Param("orderId")
 	span.SetAttributes(attribute.String("order.id", orderID))
 
-	shipment, err := shippingService.GetShipmentByOrderID(ctx, orderID)
+	shipment, err := h.service.GetShipmentByOrderID(ctx, orderID)
 	if err != nil {
 		span.RecordError(err)
 		zapLogger.Error("Failed to get shipment by order", zap.Error(err), zap.String("order_id", orderID))
