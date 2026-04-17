@@ -110,12 +110,14 @@ func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.
 	})
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	apiV1 := r.Group("/api/v1")
-	{
-		apiV1.GET("/shipping/track", handler.TrackShipment)
-		apiV1.GET("/shipping/estimate", handler.EstimateShipping)
-		apiV1.GET("/shipping/orders/:orderId", handler.GetShipmentByOrder)
-	}
+	// Shipping v1 routes — Variant A edge naming (see api-naming-convention.md)
+
+	// Public: customer-facing tracking + estimation (no auth required)
+	r.GET("/shipping/v1/public/track", handler.TrackShipment)
+	r.GET("/shipping/v1/public/estimate", handler.EstimateShipping)
+
+	// Internal: called by order-service for order-detail aggregation. Not on gateway.
+	r.GET("/shipping/v1/internal/orders/:orderId", handler.GetShipmentByOrder)
 
 	return &http.Server{
 		Addr:              ":" + cfg.Service.Port,

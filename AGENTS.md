@@ -138,22 +138,12 @@ go build ./... && go test ./... && golangci-lint run --timeout=10m
 
 ## 🔌 API Reference
 
-### Cluster paths (what this service mounts)
+Routes are mounted directly at `/{service}/v1/{audience}/…` (Variant A — single URL shape). Kong is pure pass-through for `public`; `internal` is reachable only via service DNS.
 
-| Method | Cluster path | Audience | Description |
-|--------|--------------|----------|-------------|
-| `GET` | `/api/v1/shipping/track` | public | Track shipment (query: `tracking_number`) |
-| `GET` | `/api/v1/shipping/estimate` | public | Estimate shipping cost |
-| `GET` | `/api/v1/shipping/orders/:orderId` | internal | Get shipment by order ID — called by `order-service`, **not on gateway** |
+| Method | Path | Audience | Description |
+|--------|------|----------|-------------|
+| `GET` | `/shipping/v1/public/track` | public | Track shipment (query: `tracking_number`) |
+| `GET` | `/shipping/v1/public/estimate` | public | Estimate shipping cost |
+| `GET` | `/shipping/v1/internal/orders/:orderId` | internal | Get shipment by order ID — called by `order-service` via `http://shipping.shipping.svc.cluster.local:8080` |
 
-### Edge paths (what the browser sends)
-
-Kong in the `shipping` namespace rewrites `/shipping/v1/public/{verb}` → `/api/v1/shipping/{verb}`. The internal `orders/:orderId` route stays off the gateway; `order-service` calls it via `http://shipping.shipping.svc.cluster.local:8080/api/v1/shipping/orders/:orderId`.
-
-| Edge path (browser) | → Cluster path |
-|---------------------|----------------|
-| `GET gateway.duynhne.me/shipping/v1/public/track?tracking_number=…` | `GET /api/v1/shipping/track` |
-| `GET gateway.duynhne.me/shipping/v1/public/estimate?…` | `GET /api/v1/shipping/estimate` |
-| *(no edge path)* | `GET /api/v1/shipping/orders/:orderId` — internal only |
-
-Convention + rewrite rule: [`homelab/docs/api/api-naming-convention.md`](https://github.com/duynhlab/homelab/blob/main/docs/api/api-naming-convention.md).
+Full convention + inventory: [`homelab/docs/api/api-naming-convention.md`](https://github.com/duynhlab/homelab/blob/main/docs/api/api-naming-convention.md).

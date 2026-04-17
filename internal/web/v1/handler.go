@@ -60,7 +60,7 @@ func (h *Handler) TrackShipment(c *gin.Context) {
 	c.JSON(http.StatusOK, shipment)
 }
 
-// EstimateShipping handles GET /api/v1/shipping/estimate
+// EstimateShipping handles GET /shipping/v1/public/estimate
 // Query params: origin, destination, weight
 func (h *Handler) EstimateShipping(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
@@ -114,7 +114,7 @@ func (h *Handler) EstimateShipping(c *gin.Context) {
 	c.JSON(http.StatusOK, estimate)
 }
 
-// GetShipmentByOrder handles GET /api/v1/shipping/orders/:orderId
+// GetShipmentByOrder handles GET /shipping/v1/internal/orders/:orderId
 // Returns shipment info for a given order ID
 func (h *Handler) GetShipmentByOrder(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
