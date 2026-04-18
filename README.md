@@ -10,11 +10,13 @@ Shipping microservice for tracking and cost estimation.
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/shipping/track` | Track shipment |
-| `GET` | `/api/v1/shipping/estimate` | Estimate cost |
-| `GET` | `/api/v1/shipping/orders/:id` | Get by order ID |
+All routes follow Variant A naming — single path for browser and in-cluster callers. See [homelab naming convention](https://github.com/duynhlab/homelab/blob/main/docs/api/api-naming-convention.md).
+
+| Method | Path | Audience |
+|--------|------|----------|
+| `GET` | `/shipping/v1/public/track` | public |
+| `GET` | `/shipping/v1/public/estimate` | public |
+| `GET` | `/shipping/v1/internal/orders/:id` | internal (order-service aggregation; in-cluster only) |
 
 ## Tech Stack
 

@@ -138,8 +138,12 @@ go build ./... && go test ./... && golangci-lint run --timeout=10m
 
 ## 🔌 API Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/shipping/track` | Track shipment (query: `tracking_number`) |
-| `GET` | `/api/v1/shipping/estimate` | Estimate shipping cost |
-| `GET` | `/api/v1/shipping/orders/:orderId` | Get shipment by order ID |
+Routes are mounted directly at `/{service}/v1/{audience}/…` (Variant A — single URL shape). Kong is pure pass-through for `public`; `internal` is reachable only via service DNS.
+
+| Method | Path | Audience | Description |
+|--------|------|----------|-------------|
+| `GET` | `/shipping/v1/public/track` | public | Track shipment (query: `tracking_number`) |
+| `GET` | `/shipping/v1/public/estimate` | public | Estimate shipping cost |
+| `GET` | `/shipping/v1/internal/orders/:orderId` | internal | Get shipment by order ID — called by `order-service` via `http://shipping.shipping.svc.cluster.local:8080` |
+
+Full convention + inventory: [`homelab/docs/api/api-naming-convention.md`](https://github.com/duynhlab/homelab/blob/main/docs/api/api-naming-convention.md).
